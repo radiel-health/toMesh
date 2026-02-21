@@ -1,0 +1,57 @@
+# toMesh Configuration
+# All tuneable parameters in one place.
+# Override any value via CLI flags or by pointing to a custom config with --config.
+
+segmentation:
+  # Default structures to segment (TotalSegmentator labels)
+  target_structures:
+    - aorta
+    - heart
+    - pulmonary_artery
+    - inferior_vena_cava
+  # TotalSegmentator task type
+  task: total
+  # Minimum connected-component size (voxels) to keep after segmentation
+  min_component_size: 500
+  # Number of dilation iterations for surface-continuity pass
+  dilation_iterations: 1
+  # Fill holes in 2D slice before final mask assembly
+  fill_holes: true
+
+meshing:
+  # Marching cubes iso-surface threshold
+  mc_level: 0.5
+  # Pymeshlab cleanup
+  max_hole_size: 30          # max hole size (number of edges) to close
+  smoothing_iterations: 5    # Laplacian smooth iterations
+  smoothing_lambda: 0.5      # Laplacian weight (0–1)
+  target_faces: 15000        # quadric decimation target
+  # PyVista post-smooth
+  pyvista_smooth_iterations: 20
+  pyvista_smooth_factor: 0.1
+  # Validation bounds
+  min_faces: 1000
+  max_faces: 200000
+
+gui:
+  # BC flood-fill angle threshold (degrees)
+  bc_flood_angle_threshold: 30.0
+  # Sculpt tool defaults
+  sculpt_brush_radius: 5.0
+  sculpt_brush_strength: 0.5
+  # Undo/redo stack depth
+  undo_stack_depth: 20
+
+export:
+  # Radius multiplier for neighbor graph edges (× mean edge length)
+  neighbor_radius_multiplier: 3.0
+  # Node count validation bounds
+  min_nodes: 1000
+  max_nodes: 100000
+
+pipeline:
+  # Default output subdir structure
+  mask_filename: combined_mask.nii.gz
+  mesh_stl_filename: mesh.stl
+  mesh_vtp_filename: mesh.vtp
+  graph_filename: graph.pt

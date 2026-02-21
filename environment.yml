@@ -1,0 +1,41 @@
+name: tomesh
+channels:
+  - pytorch
+  - pyg
+  - conda-forge
+  - defaults
+
+dependencies:
+  - python=3.11
+  - pip
+
+  # Core scientific
+  - numpy>=1.26.0
+  - scipy>=1.12.0
+  - scikit-image>=0.22.0
+
+  # Medical imaging
+  - simpleitk>=2.3.1
+
+  # Meshing / 3D
+  - pyvista>=0.43.0
+  - trimesh>=4.3.0
+
+  # PyTorch (CPU default; swap for CUDA variant as needed)
+  - pytorch>=2.2.0
+  - cpuonly
+
+  # GUI
+  - pyqt6>=6.6.1
+
+  # Pip-only packages
+  - pip:
+    - totalsegmentator>=2.2.0
+    - pymeshlab>=2023.12
+    - pyvistaqt>=0.11.0
+    - qdarkstyle>=3.2.3
+    - torch-geometric>=2.5.0
+    - click>=8.1.7
+    - pyyaml>=6.0.1
+    - pytest>=8.1.0
+    - pytest-cov>=5.0.0
