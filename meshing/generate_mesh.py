@@ -200,7 +200,7 @@ def generate_mesh(
     logger.info(
         "After pymeshlab cleanup: %d vertices, %d faces",
         mesh.n_points,
-        mesh.n_faces,
+        mesh.n_faces_strict,
     )
 
     # PyVista smooth pass
@@ -265,7 +265,7 @@ def _validate_mesh(
         min_faces: Minimum acceptable face count.
         max_faces: Maximum acceptable face count.
     """
-    n_faces = mesh.n_faces
+    n_faces = mesh.n_faces_strict
     if n_faces < min_faces:
         logger.warning(
             "Mesh has only %d faces (min expected: %d). "

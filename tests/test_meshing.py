@@ -111,9 +111,9 @@ class TestMeshGeneration:
             pyvista_smooth_iterations=5,
         )
         # Allow generous tolerance: decimation may not hit target exactly
-        assert mesh.n_faces > 0, "Mesh should have faces"
-        assert mesh.n_faces < target * 3, (
-            f"Face count {mesh.n_faces} unexpectedly high for target {target}"
+        assert mesh.n_faces_strict > 0, "Mesh should have faces"
+        assert mesh.n_faces_strict < target * 3, (
+            f"Face count {mesh.n_faces_strict} unexpectedly high for target {target}"
         )
 
     def test_no_null_faces(self, sphere_mask_nifti):
@@ -131,8 +131,14 @@ class TestMeshGeneration:
             pyvista_smooth_iterations=5,
         )
         # A null face has coincident or collinear vertices → zero area
-        mesh_with_quality = mesh.compute_cell_quality(quality_measure="area")
-        areas = np.array(mesh_with_quality.cell_data["CellQuality"])
+        # pyvista >= 0.44 uses cell_quality(); older uses compute_cell_quality()
+        try:
+            mesh_with_quality = mesh.cell_quality(quality_measure="area")
+            area_key = "CellQuality"
+        except AttributeError:
+            mesh_with_quality = mesh.compute_cell_quality(quality_measure="area")
+            area_key = "CellQuality"
+        areas = np.array(mesh_with_quality.cell_data[area_key])
         n_null = int((areas <= 0).sum())
         assert n_null == 0, f"Found {n_null} null (zero-area) faces"
 

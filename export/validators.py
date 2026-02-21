@@ -130,7 +130,7 @@ def validate_mesh_for_export(
     # ------------------------------------------------------------------
     # Warning: self-intersections (can be slow)
     # ------------------------------------------------------------------
-    if mesh.n_faces < 50_000:
+    if mesh.n_faces_strict < 50_000:
         try:
             collision, n_contacts = mesh.collision(mesh, generate_scalars=False)
             if n_contacts > 0:

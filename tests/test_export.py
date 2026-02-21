@@ -181,7 +181,7 @@ class TestGraphMetadata:
         from export.to_graph import mesh_to_pyg
 
         data = mesh_to_pyg(labelled_sphere)
-        assert data.mesh_face_count == labelled_sphere.n_faces
+        assert data.mesh_face_count == labelled_sphere.n_faces_strict
         assert data.mesh_vertex_count == labelled_sphere.n_points
 
     def test_bc_face_counts_sum_to_total(self, labelled_sphere):
@@ -245,8 +245,9 @@ class TestValidators:
         from tests.synthetic_data import make_sphere_mesh
         from export.validators import validate_mesh_for_export
 
-        mesh = make_sphere_mesh()
-        errors, _ = validate_mesh_for_export(mesh)
+        # Use a high-resolution sphere so vertex count exceeds the 1000 minimum
+        mesh = make_sphere_mesh(radius=10.0)
+        errors, _ = validate_mesh_for_export(mesh, min_nodes=100)
         assert errors == [], f"Unexpected errors: {errors}"
 
     def test_node_count_too_small_error(self):

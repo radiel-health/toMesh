@@ -149,7 +149,7 @@ def run_meshing_stage(
         min_faces=mesh_cfg.get("min_faces", 1000),
         max_faces=mesh_cfg.get("max_faces", 200_000),
     )
-    logger.info("Mesh generated: %d vertices, %d faces", mesh.n_points, mesh.n_faces)
+    logger.info("Mesh generated: %d vertices, %d faces", mesh.n_points, mesh.n_faces_strict)
     return mesh
 
 

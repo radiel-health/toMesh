@@ -96,6 +96,8 @@ def compute_mean_curvature(mesh: "pyvista.PolyData") -> np.ndarray:  # type: ign
     """Compute mean curvature at each vertex via PyVista.
 
     Falls back to zeros if curvature computation fails (e.g. non-manifold).
+    Handles both old API (returns PolyData with point_data) and new API
+    (pyvista >= 0.44, returns numpy array directly).
 
     Args:
         mesh: PyVista PolyData with computed normals.
@@ -104,8 +106,12 @@ def compute_mean_curvature(mesh: "pyvista.PolyData") -> np.ndarray:  # type: ign
         (N,) float32 array of mean curvature values.
     """
     try:
-        curved = mesh.curvature(curv_type="mean")
-        return np.array(curved.point_data["Mean_Curvature"], dtype=np.float32)
+        result = mesh.curvature(curv_type="mean")
+        # pyvista >= 0.44 returns a numpy array directly
+        if isinstance(result, np.ndarray):
+            return result.astype(np.float32)
+        # older pyvista returns PolyData with point_data
+        return np.array(result.point_data["Mean_Curvature"], dtype=np.float32)
     except Exception as exc:
         logger.warning("Curvature computation failed (%s); using zeros.", exc)
         return np.zeros(mesh.n_points, dtype=np.float32)
@@ -273,7 +279,7 @@ def mesh_to_pyg(
     data.n_outlet_faces = n_outlet_v
     data.n_wall_faces = n_wall_v
     data.source_file = source_file
-    data.mesh_face_count = int(mesh.n_faces)
+    data.mesh_face_count = int(mesh.n_faces_strict)
     data.mesh_vertex_count = int(mesh.n_points)
 
     logger.info(

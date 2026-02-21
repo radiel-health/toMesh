@@ -71,8 +71,9 @@ class MainWindow:
         from PyQt6 import QtWidgets, QtCore, QtGui
         from PyQt6.QtWidgets import (
             QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
-            QStatusBar, QToolBar, QAction, QMessageBox, QFileDialog,
+            QStatusBar, QToolBar, QMessageBox, QFileDialog,
         )
+        from PyQt6.QtGui import QAction  # QAction moved to QtGui in PyQt6
 
         self._app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
         _apply_dark_theme(self._app)
@@ -270,7 +271,7 @@ class MainWindow:
         from pathlib import Path as _Path
         from meshing.cleanup import remesh_to_target
 
-        n_before = self._session.mesh.n_faces
+        n_before = self._session.mesh.n_faces_strict
         self._session.push_snapshot("decimate")
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -291,7 +292,7 @@ class MainWindow:
                 self._session.mesh.point_data["bc_label"][idx]
             )
 
-        n_after = new_mesh.n_faces
+        n_after = new_mesh.n_faces_strict
         self._session.mesh = new_mesh
         self._toolbar_panel.update_decimate_info(n_before, n_after)
         logger.info("Decimate: %d → %d faces", n_before, n_after)
@@ -480,7 +481,7 @@ class MainWindow:
             counts["wall"], counts["inlet"], counts["outlet"]
         )
         self._status_bar.showMessage(
-            f"Vertices: {mesh.n_points:,}  |  Faces: {mesh.n_faces:,}  |  "
+            f"Vertices: {mesh.n_points:,}  |  Faces: {mesh.n_faces_strict:,}  |  "
             f"Wall: {counts['wall']:,}  Inlet: {counts['inlet']:,}  "
             f"Outlet: {counts['outlet']:,}"
         )
