@@ -29,19 +29,24 @@ def validate_mesh_for_export(
     min_nodes: int = _DEFAULT_MIN_NODES,
     max_nodes: int = _DEFAULT_MAX_NODES,
 ) -> Tuple[List[str], List[str]]:
-    """Run all pre-export sanity checks on a labelled mesh.
+    """Run all pre-export sanity checks on a mesh.
+
+    BC labels are optional for ML export. When absent or incomplete, checks
+    that require them are demoted to warnings so export is never blocked solely
+    due to missing BC tags (which are only needed for CFD simulation setup).
 
     Checks (ERRORS — block export):
-      1. At least 1 inlet region and 1 outlet region must be tagged.
-      2. Node count within [min_nodes, max_nodes].
-      3. No unlabelled faces (bc_label == -1).
+      1. Node count within [min_nodes, max_nodes].
 
     Checks (WARNINGS — log but allow export):
-      4. Inlet/outlet regions should be on topological boundary (free edges).
-      5. Mesh should have no self-intersections (slow for large meshes).
+      2. No 'bc_label' present (ML export still works; CFD setup will need it).
+      3. At least 1 inlet + 1 outlet tagged (needed for CFD, not for ML).
+      4. No unlabelled faces (bc_label == -1).
+      5. Inlet/outlet regions should be on topological boundary (free edges).
+      6. Mesh should have no self-intersections (slow for large meshes).
 
     Args:
-        mesh: PyVista PolyData with bc_label point_data.
+        mesh: PyVista PolyData, optionally with bc_label point_data.
         min_nodes: Minimum vertex count.
         max_nodes: Maximum vertex count.
 
@@ -51,34 +56,8 @@ def validate_mesh_for_export(
     errors: List[str] = []
     warnings: List[str] = []
 
-    if "bc_label" not in mesh.point_data:
-        errors.append(
-            "No 'bc_label' point_data found. "
-            "Tag boundary conditions before exporting."
-        )
-        return errors, warnings  # remaining checks need the array
-
-    labels = np.array(mesh.point_data["bc_label"], dtype=np.int32)
-
     # ------------------------------------------------------------------
-    # Error: at least 1 inlet + 1 outlet
-    # ------------------------------------------------------------------
-    n_inlet = int((labels == INLET).sum())
-    n_outlet = int((labels == OUTLET).sum())
-
-    if n_inlet == 0:
-        errors.append(
-            "No inlet faces tagged. "
-            "Use the BC Tagger to paint at least one inlet region."
-        )
-    if n_outlet == 0:
-        errors.append(
-            "No outlet faces tagged. "
-            "Use the BC Tagger to paint at least one outlet region."
-        )
-
-    # ------------------------------------------------------------------
-    # Error: node count bounds
+    # Error: node count bounds (always checked)
     # ------------------------------------------------------------------
     n_nodes = mesh.n_points
     if n_nodes < min_nodes:
@@ -92,14 +71,46 @@ def validate_mesh_for_export(
             "Run further decimation before export."
         )
 
+    if "bc_label" not in mesh.point_data:
+        warnings.append(
+            "No 'bc_label' point_data found. "
+            "ML export will treat all vertices as WALL. "
+            "Tag boundary conditions if you need CFD (OpenFOAM) setup."
+        )
+        # Remaining checks all need the label array — skip them
+        if errors:
+            logger.error("Export validation FAILED: %d error(s)", len(errors))
+        else:
+            logger.info("Export validation passed (%d warning(s))", len(warnings))
+        return errors, warnings
+
+    labels = np.array(mesh.point_data["bc_label"], dtype=np.int32)
+
     # ------------------------------------------------------------------
-    # Error: no unlabelled faces (-1)
+    # Warning: at least 1 inlet + 1 outlet (needed for CFD, not ML)
+    # ------------------------------------------------------------------
+    n_inlet = int((labels == INLET).sum())
+    n_outlet = int((labels == OUTLET).sum())
+
+    if n_inlet == 0:
+        warnings.append(
+            "No inlet vertices tagged. "
+            "Required for CFD (OpenFOAM) setup; not needed for ML export."
+        )
+    if n_outlet == 0:
+        warnings.append(
+            "No outlet vertices tagged. "
+            "Required for CFD (OpenFOAM) setup; not needed for ML export."
+        )
+
+    # ------------------------------------------------------------------
+    # Warning: no unlabelled faces (-1)
     # ------------------------------------------------------------------
     n_unlabelled = int((labels == -1).sum())
     if n_unlabelled > 0:
-        errors.append(
+        warnings.append(
             f"{n_unlabelled:,} vertices have label -1 (unlabelled). "
-            "All vertices must be WALL (0), INLET (1), or OUTLET (2)."
+            "All tagged vertices should be WALL (0), INLET (1), or OUTLET (2)."
         )
 
     # ------------------------------------------------------------------

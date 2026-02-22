@@ -198,8 +198,11 @@ class TestGraphMetadata:
 class TestValidators:
     """Pre-export validator logic."""
 
-    def test_no_inlet_produces_error(self):
-        """Mesh with no inlet should produce an error."""
+    def test_no_inlet_produces_warning(self):
+        """Mesh with no inlet should produce a warning (not a hard error).
+
+        Inlet/outlet tags are only required for CFD setup, not ML export.
+        """
         try:
             import pyvista as pv
             import numpy as np
@@ -212,12 +215,17 @@ class TestValidators:
         # All wall — no inlet or outlet
         mesh.point_data["bc_label"] = np.zeros(mesh.n_points, dtype=np.int32)
 
-        errors, _ = validate_mesh_for_export(mesh)
-        error_text = " ".join(errors).lower()
-        assert "inlet" in error_text, "Expected inlet error not raised"
+        # min_nodes=0 so node-count check doesn't interfere with this test
+        errors, warnings = validate_mesh_for_export(mesh, min_nodes=0)
+        assert len(errors) == 0, f"Unexpected hard errors: {errors}"
+        warn_text = " ".join(warnings).lower()
+        assert "inlet" in warn_text, "Expected inlet warning not raised"
 
-    def test_no_outlet_produces_error(self):
-        """Mesh with no outlet should produce an error."""
+    def test_no_outlet_produces_warning(self):
+        """Mesh with no outlet should produce a warning (not a hard error).
+
+        Inlet/outlet tags are only required for CFD setup, not ML export.
+        """
         try:
             import pyvista as pv
             import numpy as np
@@ -231,9 +239,28 @@ class TestValidators:
         labels[:10] = 1  # some inlet, no outlet
         mesh.point_data["bc_label"] = labels
 
-        errors, _ = validate_mesh_for_export(mesh)
-        error_text = " ".join(errors).lower()
-        assert "outlet" in error_text, "Expected outlet error not raised"
+        # min_nodes=0 so node-count check doesn't interfere with this test
+        errors, warnings = validate_mesh_for_export(mesh, min_nodes=0)
+        assert len(errors) == 0, f"Unexpected hard errors: {errors}"
+        warn_text = " ".join(warnings).lower()
+        assert "outlet" in warn_text, "Expected outlet warning not raised"
+
+    def test_no_bc_label_produces_warning_not_error(self):
+        """Export without any bc_label should warn but not block (ML use case)."""
+        try:
+            import pyvista as pv
+        except ImportError:
+            pytest.skip("pyvista not installed")
+
+        from export.validators import validate_mesh_for_export
+
+        # Plain sphere with no bc_label at all; min_nodes=0 avoids node-count error
+        mesh = pv.Sphere(radius=10.0)
+        errors, warnings = validate_mesh_for_export(mesh, min_nodes=0)
+        assert len(errors) == 0, f"Unexpected hard errors: {errors}"
+        assert any("bc_label" in w.lower() or "wall" in w.lower() for w in warnings), (
+            "Expected a warning about missing bc_label"
+        )
 
     def test_valid_mesh_no_errors(self):
         """A properly labelled mesh should pass without errors."""

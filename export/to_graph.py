@@ -139,10 +139,14 @@ def mesh_to_pyg(
     source_file: str = "",
     neighbor_radius_multiplier: float = 3.0,
 ) -> "torch_geometric.data.Data":  # type: ignore
-    """Convert a labelled PyVista PolyData to a PyG Data object.
+    """Convert a PyVista PolyData to a PyG Data object.
+
+    BC labels are optional. If ``bc_label`` point_data is absent, all vertices
+    are treated as wall (label 0) and ``is_inlet``/``is_outlet`` features are
+    zero — suitable for pure geometry-based ML inference.
 
     Args:
-        mesh: PyVista PolyData with bc_label point_data.
+        mesh: PyVista PolyData, optionally with bc_label point_data.
         source_file: Path to the originating CT scan (stored as metadata).
         neighbor_radius_multiplier: Radius edges are built at
             ``multiplier × mean_edge_length``.
@@ -153,18 +157,12 @@ def mesh_to_pyg(
 
     Raises:
         ImportError: If PyTorch or torch-geometric are not installed.
-        ValueError: If the mesh has no bc_label array.
     """
     _require_torch()
     _require_torch_geometric()
 
     import torch
     from torch_geometric.data import Data
-
-    if "bc_label" not in mesh.point_data:
-        raise ValueError(
-            "Mesh has no 'bc_label' point_data. Run BC tagging before export."
-        )
 
     # ------------------------------------------------------------------
     # Geometry
@@ -187,8 +185,15 @@ def mesh_to_pyg(
     # Mean curvature
     mean_curv = compute_mean_curvature(mesh)  # (N,)
 
-    # BC labels
-    labels = np.array(mesh.point_data["bc_label"], dtype=np.int32)
+    # BC labels — optional; default to all-wall (0) if not tagged
+    if "bc_label" in mesh.point_data:
+        labels = np.array(mesh.point_data["bc_label"], dtype=np.int32)
+    else:
+        logger.info(
+            "No 'bc_label' found on mesh — treating all vertices as WALL (0). "
+            "is_inlet and is_outlet features will be zero."
+        )
+        labels = np.zeros(mesh.n_points, dtype=np.int32)
     is_inlet = (labels == INLET).astype(np.float32)
     is_outlet = (labels == OUTLET).astype(np.float32)
 
