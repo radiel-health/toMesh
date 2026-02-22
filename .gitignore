@@ -1,0 +1,4 @@
+*.pyc
+__pycache__/
+*.vtp
+test_gui_output/
