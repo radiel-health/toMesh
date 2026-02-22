@@ -131,13 +131,15 @@ class TestMeshGeneration:
             pyvista_smooth_iterations=5,
         )
         # A null face has coincident or collinear vertices → zero area
-        # pyvista >= 0.44 uses cell_quality(); older uses compute_cell_quality()
+        # pyvista >= 0.44 uses cell_quality(); key name changed to match the
+        # quality_measure string ("area") in newer versions.
         try:
             mesh_with_quality = mesh.cell_quality(quality_measure="area")
-            area_key = "CellQuality"
         except AttributeError:
             mesh_with_quality = mesh.compute_cell_quality(quality_measure="area")
-            area_key = "CellQuality"
+        area_key = next(
+            k for k in ("area", "CellQuality") if k in mesh_with_quality.cell_data
+        )
         areas = np.array(mesh_with_quality.cell_data[area_key])
         n_null = int((areas <= 0).sum())
         assert n_null == 0, f"Found {n_null} null (zero-area) faces"
